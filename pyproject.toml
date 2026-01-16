@@ -19,7 +19,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Environment :: Console",
-    "Framework :: Textual",
 ]
 dependencies = [
     "genro-bag>=0.7.0",
@@ -33,6 +32,9 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
 ]
+
+[project.scripts]
+bagapp = "genro_pygui.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/genropy/genro-pygui"

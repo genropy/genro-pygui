@@ -1,0 +1,43 @@
+#!/bin/bash
+# commit-msg hook - Validate commit message
+#
+# Blocks commits that contain:
+#   - Co-Authored-By: Claude
+#   - Generated with Claude
+#   - Other Claude/AI attribution patterns
+
+set -e
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+echo "Checking commit message..."
+
+# Check for Claude co-author
+if echo "$COMMIT_MSG" | grep -qi "Co-Authored-By:.*Claude"; then
+    echo "  ❌ BLOCKED: Commit contains Claude as co-author"
+    echo ""
+    echo "  Remove the 'Co-Authored-By: Claude' line from your commit message."
+    echo "  Per policy, Claude should not be listed as co-author."
+    exit 1
+fi
+
+# Check for "Generated with Claude" or similar
+if echo "$COMMIT_MSG" | grep -qi "Generated with.*Claude"; then
+    echo "  ❌ BLOCKED: Commit contains 'Generated with Claude'"
+    echo ""
+    echo "  Remove the 'Generated with Claude' reference from your commit message."
+    echo "  Per policy, this attribution should not be included."
+    exit 1
+fi
+
+# Check for Claude Code attribution
+if echo "$COMMIT_MSG" | grep -qi "claude-code\|claude code"; then
+    echo "  ❌ BLOCKED: Commit contains Claude Code reference"
+    echo ""
+    echo "  Remove the Claude Code reference from your commit message."
+    echo "  Per policy, this attribution should not be included."
+    exit 1
+fi
+
+echo "  ✅ Commit message OK"

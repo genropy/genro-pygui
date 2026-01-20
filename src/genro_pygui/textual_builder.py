@@ -25,32 +25,36 @@ from typing import TYPE_CHECKING, Any, get_args, get_origin
 from genro_bag import Bag
 from genro_bag.builder import BagBuilderBase
 from genro_bag.builders import SchemaBuilder
+from textual import widgets as textual_widgets
 from textual.widget import Widget
-from textual.widgets import (
-    Button,
-    Checkbox,
-    Input,
-    Label,
-    RadioButton,
-    Static,
-    Switch,
-    TextArea,
-)
 
 if TYPE_CHECKING:
     from genro_bag.bagnode import BagNode
 
-# Widgets to include in schema
-WIDGETS = [
-    Static,
-    Button,
-    Input,
-    Label,
-    Switch,
-    Checkbox,
-    RadioButton,
-    TextArea,
-]
+def _discover_widgets() -> list[type]:
+    """Discover all Widget subclasses by parsing textual.widgets source."""
+    import re
+
+    source = inspect.getsource(textual_widgets)
+    pattern = r"from textual\.widgets\.(_\w+) import (.+)"
+    widgets = []
+
+    for match in re.finditer(pattern, source):
+        submodule = match.group(1)
+        names = [n.strip() for n in match.group(2).split(",")]
+        try:
+            mod = import_module(f"textual.widgets.{submodule}")
+            for name in names:
+                cls = getattr(mod, name.strip(), None)
+                if cls and isinstance(cls, type) and issubclass(cls, Widget):
+                    widgets.append(cls)
+        except (ImportError, ModuleNotFoundError):
+            pass
+
+    return widgets
+
+
+WIDGETS = _discover_widgets()
 
 # Parameters to skip (internal or complex types)
 SKIP_PARAMS = {"self", "highlighter", "suggester", "validators", "validate_on"}
@@ -106,6 +110,16 @@ def _extract_widget_validations(widget_class: type) -> dict[str, tuple[Any, list
     return validations
 
 
+def _is_container(widget_class: type) -> bool:
+    """Check if widget can contain children (has children param or *args)."""
+    sig = inspect.signature(widget_class.__init__)
+    if "children" in sig.parameters:
+        return True
+    return any(
+        p.kind == inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values()
+    )
+
+
 def _generate_textual_schema() -> Bag:
     """Generate schema Bag for Textual widgets."""
     schema = Bag(builder=SchemaBuilder)
@@ -126,15 +140,19 @@ def _generate_textual_schema() -> Bag:
         widget_name = widget_class.__name__.lower()
         validations = _extract_widget_validations(widget_class)
         doc = widget_class.__doc__ or f"Textual {widget_class.__name__} widget"
+        is_container = _is_container(widget_class)
 
-        schema.item(
-            widget_name,
-            inherits_from="@widget",
-            call_args_validations=validations,
-            compile_module="textual.widgets",
-            compile_class=widget_class.__name__,
-            documentation=doc.split("\n")[0],
-        )
+        item_kwargs: dict[str, Any] = {
+            "inherits_from": "@widget",
+            "call_args_validations": validations,
+            "compile_module": "textual.widgets",
+            "compile_class": widget_class.__name__,
+            "documentation": doc.split("\n")[0],
+        }
+        if not is_container:
+            item_kwargs["sub_tags"] = ""
+
+        schema.item(widget_name, **item_kwargs)
 
     return schema
 

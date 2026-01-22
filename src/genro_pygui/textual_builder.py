@@ -569,12 +569,11 @@ class TextualBuilder(BagBuilderBase):
             # LEAF: prendi il contenuto
             content = str(node.value) if node.value else ""
 
-        # Crea il widget - passa content al primo parametro posizionale se esiste
+        # Crea il widget - mappa content sul primo parametro posizionale come keyword
         first_param = self._get_first_positional_param(textual_class)
         if content and first_param and first_param not in kwargs:
-            widget = textual_class(content, **kwargs)
-        else:
-            widget = textual_class(**kwargs)
+            kwargs[first_param] = content
+        widget = textual_class(**kwargs)
 
         # Salva il widget nel nodo
         node.compiled["widget"] = widget
@@ -723,9 +722,9 @@ class TextualBuilder(BagBuilderBase):
             for col_node in columns:
                 col_attr = dict(col_node.attr)
                 label = col_attr.get("label", str(col_node.value) if col_node.value else "")
-                key = col_attr.get("key")
-                width = col_attr.get("width")
-                widget.add_column(label, key=key, width=width)
+                # Filter column kwargs based on add_column signature (version-safe)
+                col_kwargs = self._build_method_kwargs(col_attr, widget.add_column)
+                widget.add_column(label, **col_kwargs)
 
             for row_node in rows:
                 row_attr = dict(row_node.attr)

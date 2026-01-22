@@ -8,7 +8,7 @@ Run with CLI:
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """App with nested containers."""
 
     def main(self, root):

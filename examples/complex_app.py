@@ -14,7 +14,7 @@ from __future__ import annotations
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """Complex application with tabs, forms, and Exit button."""
 
     def main(self, root):

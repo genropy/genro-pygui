@@ -43,7 +43,7 @@ def _run_with_reload(file_path: str) -> None:
 
 
 def run_app(file_path: str, connect: bool = False, reload: bool = False) -> None:
-    """Run a TextualApp from file path. Expects class Main."""
+    """Run a TextualApp from file path. Expects class Application."""
     app_name = os.path.basename(file_path).replace(".py", "")
 
     if reload:
@@ -74,9 +74,9 @@ def run_app(file_path: str, connect: bool = False, reload: bool = False) -> None
     spec.loader.exec_module(module)
 
     # Cerca classe Main
-    app_class = getattr(module, "Main", None)
+    app_class = getattr(module, "Application", None)
     if app_class is None:
-        print(f"Error: {file_path} must have a class named 'Main'")
+        print(f"Error: {file_path} must have a class named 'Application'")
         sys.exit(1)
 
     port = find_free_port()
@@ -136,7 +136,7 @@ def main() -> None:
 
     # run command
     run_parser = subparsers.add_parser("run", help="Run a TextualApp")
-    run_parser.add_argument("file", help="path/to/file.py (must have class Main)")
+    run_parser.add_argument("file", help="path/to/file.py (must have class Application)")
     run_parser.add_argument(
         "-c", "--connect", action="store_true", help="Run in background and connect REPL"
     )

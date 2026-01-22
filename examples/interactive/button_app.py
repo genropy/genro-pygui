@@ -12,7 +12,7 @@ from textual.widgets import Button
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """App with button that adds widgets dynamically."""
 
     def main(self, root):

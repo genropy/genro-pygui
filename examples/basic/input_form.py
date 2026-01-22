@@ -12,7 +12,7 @@ from textual.widgets import Input
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """Simple form with input fields."""
 
     def main(self, root):

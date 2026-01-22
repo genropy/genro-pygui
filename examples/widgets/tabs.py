@@ -10,7 +10,7 @@ Shows how to create tabbed interfaces with TabbedContent and TabPane.
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """TabbedContent with multiple TabPane containers."""
 
     CSS = """

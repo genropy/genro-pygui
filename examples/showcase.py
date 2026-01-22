@@ -8,7 +8,7 @@ Run with:
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """All examples in tabs."""
 
     CSS = """

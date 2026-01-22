@@ -1,0 +1,46 @@
+diff --git a/textual_builder.py b/textual_builder.py
+index 1111111..2222222 100644
+--- a/textual_builder.py
++++ b/textual_builder.py
+@@ -1,3 +1,4 @@
++# NOTE: Patch generated to fix content mapping and make DataTable column addition signature-safe.
+@@ -250,12 +251,14 @@ class TextualBuilder(BagBuilderBase):
+         else:
+             # LEAF: prendi il contenuto
+             content = str(node.value) if node.value else ""
+
+-        # Crea il widget - passa content al primo parametro posizionale se esiste
+-        first_param = self._get_first_positional_param(textual_class)
+-        if content and first_param and first_param not in kwargs:
+-            widget = textual_class(content, **kwargs)
+-        else:
+-            widget = textual_class(**kwargs)
++        # Crea il widget - mappa content sul primo parametro posizionale (label/text/title/content/...)
++        # IMPORTANT: do NOT pass content positionally; assign it as keyword to the correct param name.
++        first_param = self._get_first_positional_param(textual_class)
++        if content and first_param and first_param not in kwargs:
++            kwargs[first_param] = content
++        widget = textual_class(**kwargs)
+@@ -360,18 +363,25 @@ class TextualBuilder(BagBuilderBase):
+             for col_node in columns:
+                 col_attr = dict(col_node.attr)
+                 label = col_attr.get("label", str(col_node.value) if col_node.value else "")
+-                key = col_attr.get("key")
+-                width = col_attr.get("width")
+-                widget.add_column(label, key=key, width=width)
++                # Build kwargs for add_column() based on signature (version-safe)
++                col_kwargs = self._build_method_kwargs(col_attr, widget.add_column)
++                # Ensure label is passed as first argument (or override in kwargs if you prefer)
++                widget.add_column(label, **col_kwargs)
+
+             for row_node in rows:
+                 row_attr = dict(row_node.attr)
+                 if isinstance(row_node.value, (list, tuple)):
+                     cells = row_node.value
+                 elif isinstance(row_node.value, Bag):
+                     cells = [str(c.value) for c in row_node.value]
+                 else:
+                     cells = [str(row_node.value)] if row_node.value else []
+                 # Filter row kwargs based on add_row signature
+                 row_kwargs = self._build_method_kwargs(row_attr, widget.add_row)
+                 widget.add_row(*cells, **row_kwargs)

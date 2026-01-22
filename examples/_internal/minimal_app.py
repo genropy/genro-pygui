@@ -6,7 +6,7 @@ from __future__ import annotations
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """Minimal app with just a header and button."""
 
     def main(self, root):

@@ -10,7 +10,7 @@ Shows how to create a DataTable with column and row definitions.
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """DataTable with columns and rows defined in Bag."""
 
     CSS = """

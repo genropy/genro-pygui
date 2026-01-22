@@ -12,7 +12,7 @@ from textual.widgets import Button
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """Display all button variants."""
 
     def main(self, root):

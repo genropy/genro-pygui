@@ -10,7 +10,7 @@ Use the remote REPL to add widgets dynamically.
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """TextualApp controllable via remote connection."""
 
     def main(self, root):

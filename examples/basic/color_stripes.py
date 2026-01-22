@@ -10,7 +10,7 @@ Shows how to create multiple Static widgets with different colors.
 from genro_pygui import TextualApp
 
 
-class Main(TextualApp):
+class Application(TextualApp):
     """Display colored stripes using Static widgets."""
 
     COLORS = ["red", "orange", "yellow", "green", "blue", "purple"]

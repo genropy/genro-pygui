@@ -2,24 +2,18 @@
 """Colored stripes example (inspired by Textual Pride app).
 
 Run with:
-    PYTHONPATH=src python examples/basic/color_stripes.py
+    textual run examples/basic/color_stripes.py
 
 Shows how to create multiple Static widgets with different colors.
 """
 
-from __future__ import annotations
-
-from genro_pygui import BagApp
+from genro_pygui import TextualApp
 
 
-class ColorStripesApp(BagApp):
+class Main(TextualApp):
     """Display colored stripes using Static widgets."""
 
     COLORS = ["red", "orange", "yellow", "green", "blue", "purple"]
-
-    def build(self) -> None:
-        for i, color in enumerate(self.COLORS):
-            self.page.static(f"  {color.upper()}  ", classes=f"stripe-{i}")
 
     CSS = """
     Static {
@@ -35,6 +29,6 @@ class ColorStripesApp(BagApp):
     .stripe-5 { background: purple; }
     """
 
-
-if __name__ == "__main__":
-    ColorStripesApp().run()
+    def compose(self, root):
+        for i, color in enumerate(self.COLORS):
+            root.static(f"  {color.upper()}  ", classes=f"stripe-{i}")

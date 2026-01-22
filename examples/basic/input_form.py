@@ -2,31 +2,25 @@
 """Simple input form example.
 
 Run with:
-    PYTHONPATH=src python examples/basic/input_form.py
+    textual run examples/basic/input_form.py
 
 Shows Input widgets with placeholders.
 """
 
-from __future__ import annotations
-
 from textual.widgets import Input
 
-from genro_pygui import BagApp
+from genro_pygui import TextualApp
 
 
-class InputFormApp(BagApp):
+class Main(TextualApp):
     """Simple form with input fields."""
 
-    def build(self) -> None:
-        self.page.static("User Registration")
-        self.page.input(placeholder="First Name", id="first_name")
-        self.page.input(placeholder="Last Name", id="last_name")
-        self.page.input(placeholder="Email", id="email")
-        self.page.static("Press Tab to move between fields, q to quit")
+    def compose(self, root):
+        root.static("User Registration")
+        root.input(placeholder="First Name", id="first_name")
+        root.input(placeholder="Last Name", id="last_name")
+        root.input(placeholder="Email", id="email")
+        root.static("Press Tab to move between fields, q to quit")
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        self.page.static(f"Submitted: {event.input.id} = {event.value}")
-
-
-if __name__ == "__main__":
-    InputFormApp().run()
+    def on_input_submitted(self, event: Input.Submitted):
+        self.notify(f"Submitted: {event.input.id} = {event.value}")

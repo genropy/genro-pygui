@@ -1,30 +1,19 @@
 # Copyright 2025 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
-"""BagApp controllable via CLI.
+"""App controllable via remote connection.
 
-Run in one terminal:
-    PYTHONPATH=src python -m genro_pygui.cli run examples.interactive.remote_app:RemoteApp --name demo
+Run with:
+    textual run examples/interactive/remote_app.py
 
-In another terminal:
-    PYTHONPATH=src python -m genro_pygui.cli connect demo
-
-Then in the REPL:
-    >>> app.page.static("Hello from CLI!")
-    >>> app.page.button("Click me", id="btn1")
+Use the remote REPL to add widgets dynamically.
 """
 
-from __future__ import annotations
-
-from genro_pygui import BagApp
+from genro_pygui import TextualApp
 
 
-class RemoteApp(BagApp):
-    """BagApp controllable via bagapp CLI."""
+class Main(TextualApp):
+    """TextualApp controllable via remote connection."""
 
-    def build(self) -> None:
-        self.page.static("Remote BagApp")
-        self.page.static("Use 'bagapp connect <name>' to add widgets")
-        self.page.static("Press 'q' to quit")
-
-
-if __name__ == "__main__":
-    RemoteApp(remote_port=9999).run()
+    def compose(self, root):
+        root.static("Remote TextualApp")
+        root.static("Use remote REPL to add widgets")
+        root.static("Press 'q' to quit")

@@ -2,36 +2,25 @@
 """Button that adds widgets dynamically.
 
 Run with:
-    PYTHONPATH=src python examples/interactive/button_app.py
+    textual run examples/interactive/button_app.py
 
 Press the button to add a new Static widget.
 """
 
-from __future__ import annotations
-
 from textual.widgets import Button
 
-from genro_pygui import BagApp
+from genro_pygui import TextualApp
 
 
-class ButtonApp(BagApp):
+class Main(TextualApp):
     """App with button that adds widgets dynamically."""
 
-    BINDINGS = [("q", "quit", "Quit")]
+    def compose(self, root):
+        root.static("Press the button to add widgets")
+        root.static("Press 'q' to quit")
+        root.button("Add Static", id="add_btn", variant="primary")
 
-    def build(self) -> None:
-        self.page.static("Press the button to add widgets")
-        self.page.static("Press 'q' to quit")
-
-    def compose(self):
-        yield Button("Add Static", id="add_btn")
-        yield from super().compose()
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "add_btn":
-            count = len(list(self.page.keys()))
-            self.page.static(f"Widget #{count + 1}")
-
-
-if __name__ == "__main__":
-    ButtonApp().run()
+            count = len(list(self.root.children))
+            self.root.mount_from_bag(lambda b: b.static(f"Widget #{count}"))

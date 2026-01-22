@@ -1,17 +1,22 @@
 # Copyright 2025 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
-"""CLI for running BagApp applications.
+"""CLI for running TextualApp applications.
 
 Usage:
-    bagapp run mymodule:MyApp --name myapp
-    bagapp list
-    bagapp connect myapp
+    textual run examples/basic/hello_world.py
+    textual run examples/basic/hello_world.py -c   # run and connect
+    textual run examples/basic/hello_world.py -r   # run with autoreload
+    textual list
+    textual connect hello_world
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib
+import importlib.util
+import os
+import subprocess
 import sys
+import time
 
 from genro_pygui.registry import (
     find_free_port,
@@ -22,21 +27,59 @@ from genro_pygui.registry import (
 )
 
 
-def run_app(module_class: str, name: str | None = None) -> None:
-    """Run a BagApp from module:class specification."""
-    # Add current directory to path for local imports
-    import os
+def _run_with_reload(file_path: str) -> None:
+    """Run app with autoreload using watchfiles."""
+    try:
+        from watchfiles import run_process
+    except ImportError:
+        print("Error: watchfiles not installed. Run: pip install watchfiles")
+        sys.exit(1)
 
-    cwd = os.getcwd()
-    if cwd not in sys.path:
-        sys.path.insert(0, cwd)
+    def target():
+        run_app(file_path, connect=False, reload=False)
 
-    module_path, class_name = module_class.split(":")
-    module = importlib.import_module(module_path)
-    app_class = getattr(module, class_name)
+    watch_dir = os.path.dirname(os.path.abspath(file_path)) or "."
+    run_process(watch_dir, target=target)
+
+
+def run_app(file_path: str, connect: bool = False, reload: bool = False) -> None:
+    """Run a TextualApp from file path. Expects class Main."""
+    app_name = os.path.basename(file_path).replace(".py", "")
+
+    if reload:
+        _run_with_reload(file_path)
+        return
+
+    if connect:
+        # Lancia l'app in background e poi connetti
+        env = os.environ.copy()
+        env["PYTHONPATH"] = os.pathsep.join(sys.path)
+        subprocess.Popen(
+            [sys.executable, "-m", "genro_pygui.cli", "run", file_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+        )
+        # Attendi che l'app si registri
+        for _ in range(10):
+            time.sleep(0.2)
+            if get_port(app_name) is not None:
+                break
+        connect_repl(app_name)
+        return
+
+    # Carica il modulo dal file
+    spec = importlib.util.spec_from_file_location(app_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    # Cerca classe Main
+    app_class = getattr(module, "Main", None)
+    if app_class is None:
+        print(f"Error: {file_path} must have a class named 'Main'")
+        sys.exit(1)
 
     port = find_free_port()
-    app_name = name or class_name.lower()
 
     register_app(app_name, port)
     print(f"Starting {app_name} on port {port}")
@@ -79,13 +122,18 @@ def connect_repl(name: str) -> None:
 
 def main() -> None:
     """CLI entry point."""
-    parser = argparse.ArgumentParser(prog="bagapp", description="BagApp CLI")
+    parser = argparse.ArgumentParser(prog="textual", description="TextualApp CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # run command
-    run_parser = subparsers.add_parser("run", help="Run a BagApp")
-    run_parser.add_argument("module_class", help="module:ClassName")
-    run_parser.add_argument("--name", "-n", help="App name for registry")
+    run_parser = subparsers.add_parser("run", help="Run a TextualApp")
+    run_parser.add_argument("file", help="path/to/file.py (must have class Main)")
+    run_parser.add_argument(
+        "-c", "--connect", action="store_true", help="Run in background and connect REPL"
+    )
+    run_parser.add_argument(
+        "-r", "--reload", action="store_true", help="Run with autoreload on file changes"
+    )
 
     # list command
     subparsers.add_parser("list", help="List running apps")
@@ -97,7 +145,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "run":
-        run_app(args.module_class, args.name)
+        run_app(args.file, connect=args.connect, reload=args.reload)
     elif args.command == "list":
         list_running()
     elif args.command == "connect":

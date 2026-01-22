@@ -18,7 +18,7 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from genro_pygui.bag_app import BagApp
+    from genro_pygui.textual_app import TextualApp
 
 
 class RemoteProxy:
@@ -92,9 +92,9 @@ def connect(
 
 
 class RemoteServer:
-    """Server that receives commands for BagApp."""
+    """Server that receives commands for TextualApp."""
 
-    def __init__(self, app: BagApp, port: int = 9999) -> None:
+    def __init__(self, app: TextualApp, port: int = 9999) -> None:
         self._app = app
         self._port = port
         self._thread: threading.Thread | None = None
@@ -149,7 +149,7 @@ class RemoteServer:
             def do_set() -> None:
                 self._app.page[key] = value
 
-            self._app.call_from_thread(do_set)
+            self._app._safe_call(do_set)
             return "ok"
 
         if cmd.startswith("__call__:"):
@@ -160,7 +160,7 @@ class RemoteServer:
                 method = getattr(self._app.page, method_name)
                 return method(*args, **kwargs)
 
-            self._app.call_from_thread(do_call)
+            self._app._safe_call(do_call)
             return "ok"
 
         return None

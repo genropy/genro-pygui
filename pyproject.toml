@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "genro-bag>=0.7.0",
     "textual>=0.47.0",
+    "watchfiles>=0.21.0",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,7 @@ dev = [
 ]
 
 [project.scripts]
-bagapp = "genro_pygui.cli:main"
+textual = "genro_pygui.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/genropy/genro-pygui"

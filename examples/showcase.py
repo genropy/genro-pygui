@@ -2,40 +2,14 @@
 """Showcase: all examples in a TabbedContent.
 
 Run with:
-    PYTHONPATH=src python examples/showcase.py
+    textual run examples/showcase.py
 """
 
-from __future__ import annotations
-
-from genro_pygui import BagApp
+from genro_pygui import TextualApp
 
 
-class ShowcaseApp(BagApp):
+class Main(TextualApp):
     """All examples in tabs."""
-
-    def build(self) -> None:
-        with self.page.tabbedcontent(id="examples"):
-            with self.page.tabpane("Hello World", id="tab-hello"):
-                self.page.static("Hello, Textual!")
-                self.page.static("Press 'q' to quit")
-
-            with self.page.tabpane("Colors", id="tab-colors"):
-                for color in ["red", "orange", "yellow", "green", "blue", "purple"]:
-                    self.page.static(f"  {color.upper()}  ", classes=f"stripe-{color}")
-
-            with self.page.tabpane("Buttons", id="tab-buttons"):
-                self.page.static("Button Variants")
-                self.page.button("Default", id="btn_default")
-                self.page.button("Primary", id="btn_primary", variant="primary")
-                self.page.button("Success", id="btn_success", variant="success")
-                self.page.button("Warning", id="btn_warning", variant="warning")
-                self.page.button("Error", id="btn_error", variant="error")
-
-            with self.page.tabpane("Form", id="tab-form"):
-                self.page.static("User Registration")
-                self.page.input(placeholder="First Name", id="first_name")
-                self.page.input(placeholder="Last Name", id="last_name")
-                self.page.input(placeholder="Email", id="email")
 
     CSS = """
     .stripe-red { background: red; }
@@ -46,6 +20,33 @@ class ShowcaseApp(BagApp):
     .stripe-purple { background: purple; }
     """
 
+    def compose(self, root):
+        tabs = root.tabbedcontent(id="examples")
 
-if __name__ == "__main__":
-    ShowcaseApp().run()
+        # Tab 1: Hello World
+        tab1 = tabs.tabpane(title="Hello World", id="tab-hello")
+        tab1.static("Hello, Textual!")
+        tab1.static("Press 'q' to quit")
+
+        # Tab 2: Colors
+        tab2 = tabs.tabpane(title="Colors", id="tab-colors")
+        for color in ["red", "orange", "yellow", "green", "blue", "purple"]:
+            tab2.static(f"  {color.upper()}  ", classes=f"stripe-{color}")
+
+        # Tab 3: Buttons
+        tab3 = tabs.tabpane(title="Buttons", id="tab-buttons")
+        tab3.static("Button Variants")
+        tab3.button("Default", id="btn_default")
+        tab3.button("Primary", id="btn_primary", variant="primary")
+        tab3.button("Success", id="btn_success", variant="success")
+        tab3.button("Warning", id="btn_warning", variant="warning")
+        tab3.button("Error", id="btn_error", variant="error")
+
+        # Tab 4: Form
+        tab4 = tabs.tabpane(title="Form", id="tab-form")
+        tab4.static("User Registration")
+        tab4.input(placeholder="First Name", id="first_name")
+        tab4.input(placeholder="Last Name", id="last_name")
+        tab4.input(placeholder="Email", id="email")
+
+

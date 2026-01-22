@@ -3,11 +3,11 @@
 
 Workflow:
     1. App instantiated → creates _page (recipe Bag) and _data (data Bag)
-    2. main(root) → populates the recipe Bag (the "human-readable recipe")
+    2. recipe(root) → populates the recipe Bag (the "human-readable recipe")
     3. run() → compiles the recipe and starts Textual
     4. Textual calls App.compose() → yields the pre-compiled widgets
 
-IMPORTANT: main() is called ONCE at instantiation to create the recipe.
+IMPORTANT: recipe() is called ONCE at instantiation to create the recipe.
 compile() transforms the recipe into Textual widgets ONCE.
 Textual's compose() just yields the cached widgets.
 
@@ -15,7 +15,7 @@ Example:
     from genro_pygui import TextualApp
 
     class MyApp(TextualApp):
-        def main(self, root):
+        def recipe(self, root):
             root.static("Hello, Textual!")
             tabs = root.tabbedcontent()
             tab1 = tabs.tabpane("Tab 1")
@@ -68,7 +68,7 @@ class TextualWrapperApp(App):
 class TextualApp:
     """Base class for Textual apps built with Bag.
 
-    Subclass and override compose(root) to define your UI.
+    Subclass and override recipe(root) to define your UI.
     The root is a Bag with TextualBuilder - use it to add widgets.
     """
 
@@ -79,7 +79,7 @@ class TextualApp:
         self._remote_port = remote_port
         self._compiled_widgets: list[Widget] = []
         self._textual_app: App | None = None
-        self.main(self._page)
+        self.recipe(self._page)
 
     @property
     def page(self) -> Bag:
@@ -91,7 +91,7 @@ class TextualApp:
         """The data Bag (application data)."""
         return self._data
 
-    def main(self, root: Bag) -> None:
+    def recipe(self, root: Bag) -> None:
         """Override this method to build your UI.
 
         Args:

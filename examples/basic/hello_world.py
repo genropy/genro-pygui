@@ -11,6 +11,6 @@ from genro_pygui import TextualApp
 class Application(TextualApp):
     """Minimal TextualApp showing basic usage."""
 
-    def main(self, root):
+    def recipe(self, root):
         root.static("Hello, Textual!")
         root.static("Press 'q' to quit")

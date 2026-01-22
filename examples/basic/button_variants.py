@@ -15,7 +15,7 @@ from genro_pygui import TextualApp
 class Application(TextualApp):
     """Display all button variants."""
 
-    def main(self, root):
+    def recipe(self, root):
         root.static("Button Variants")
         root.button("Default", id="btn_default")
         root.button("Primary", id="btn_primary", variant="primary")

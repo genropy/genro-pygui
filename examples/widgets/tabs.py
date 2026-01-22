@@ -21,7 +21,7 @@ class Application(TextualApp):
     }
     """
 
-    def main(self, root):
+    def recipe(self, root):
         tabs = root.tabbedcontent(id="main-tabs", initial="overview")
 
         # Tab 1: Overview

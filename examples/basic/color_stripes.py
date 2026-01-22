@@ -29,6 +29,6 @@ class Application(TextualApp):
     .stripe-5 { background: purple; }
     """
 
-    def main(self, root):
+    def recipe(self, root):
         for i, color in enumerate(self.COLORS):
             root.static(f"  {color.upper()}  ", classes=f"stripe-{i}")

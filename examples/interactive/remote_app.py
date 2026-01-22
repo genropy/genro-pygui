@@ -13,7 +13,7 @@ from genro_pygui import TextualApp
 class Application(TextualApp):
     """TextualApp controllable via remote connection."""
 
-    def main(self, root):
+    def recipe(self, root):
         root.static("Remote TextualApp")
         root.static("Use remote REPL to add widgets")
         root.static("Press 'q' to quit")

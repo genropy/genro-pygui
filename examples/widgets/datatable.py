@@ -19,7 +19,7 @@ class Application(TextualApp):
     }
     """
 
-    def main(self, root):
+    def recipe(self, root):
         root.static("DataTable Example")
 
         # Create DataTable with columns and rows

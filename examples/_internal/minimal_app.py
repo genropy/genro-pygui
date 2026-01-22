@@ -9,6 +9,6 @@ from genro_pygui import TextualApp
 class Application(TextualApp):
     """Minimal app with just a header and button."""
 
-    def main(self, root):
+    def recipe(self, root):
         c = root.container()
         c.static("Hello World")

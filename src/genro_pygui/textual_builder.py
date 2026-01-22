@@ -569,8 +569,9 @@ class TextualBuilder(BagBuilderBase):
             # LEAF: prendi il contenuto
             content = str(node.value) if node.value else ""
 
-        # Crea il widget - passa content solo se la classe lo accetta
-        if content and self._accepts_content_positional(textual_class):
+        # Crea il widget - passa content al primo parametro posizionale se esiste
+        first_param = self._get_first_positional_param(textual_class)
+        if content and first_param and first_param not in kwargs:
             widget = textual_class(content, **kwargs)
         else:
             widget = textual_class(**kwargs)
@@ -601,18 +602,40 @@ class TextualBuilder(BagBuilderBase):
                 kwargs[key] = value
         return kwargs
 
-    def _accepts_content_positional(self, widget_class: type) -> bool:
-        """Check if widget accepts 'content' as first positional argument."""
+    def _build_method_kwargs(self, attr: dict[str, Any], method: callable) -> dict[str, Any]:
+        """Build kwargs for a method call, filtering by signature.
+
+        Similar to _build_widget_kwargs but for methods like add_row(), add_column().
+        """
+        sig = inspect.signature(method)
+        valid_params = set(sig.parameters.keys()) - {"self"}
+        has_var_keyword = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+        kwargs = {}
+        for key, value in attr.items():
+            if key.startswith("_"):
+                continue
+            if has_var_keyword or key in valid_params:
+                kwargs[key] = value
+        return kwargs
+
+    def _get_first_positional_param(self, widget_class: type) -> str | None:
+        """Get the name of the first positional parameter (after self).
+
+        Returns the parameter name if it exists and is positional, None otherwise.
+        This allows mapping node.value to the appropriate parameter (content, label, text, etc.)
+        """
         sig = inspect.signature(widget_class.__init__)
         params = list(sig.parameters.values())
         if len(params) > 1:
             first_param = params[1]  # Skip 'self'
-            if first_param.name == "content" and first_param.kind in (
+            if first_param.kind in (
                 inspect.Parameter.POSITIONAL_OR_KEYWORD,
                 inspect.Parameter.POSITIONAL_ONLY,
             ):
-                return True
-        return False
+                return first_param.name
+        return None
 
     # -------------------------------------------------------------------------
     # Dedicated compile methods for widgets needing special handling
@@ -706,13 +729,12 @@ class TextualBuilder(BagBuilderBase):
 
             for row_node in rows:
                 row_attr = dict(row_node.attr)
-                key = row_attr.get("key")
-                label = row_attr.get("label")
-                height = row_attr.get("height", 1)
                 if isinstance(row_node.value, (list, tuple)):
                     cells = row_node.value
                 elif isinstance(row_node.value, Bag):
                     cells = [str(c.value) for c in row_node.value]
                 else:
                     cells = [str(row_node.value)] if row_node.value else []
-                widget.add_row(*cells, key=key, label=label, height=height)
+                # Filter row kwargs based on add_row signature
+                row_kwargs = self._build_method_kwargs(row_attr, widget.add_row)
+                widget.add_row(*cells, **row_kwargs)

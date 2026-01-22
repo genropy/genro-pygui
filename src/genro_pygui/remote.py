@@ -1,43 +1,96 @@
 # Copyright 2025 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
-"""Remote control for BagApp.
+"""Remote control for TextualApp.
 
-Server side (in BagApp):
+Server side (in TextualApp):
     app.enable_remote(port=9999)
 
 Client side:
     from genro_pygui.remote import connect
     app = connect()
     app.page.static("Hello!")
+
+Protocol:
+    - Each message is prefixed with 4 bytes (big-endian) indicating length
+    - Messages are pickle-serialized Python objects
+    - Client sends: (command, *args)
+    - Server responds: (status, result) where status is "ok" or "error"
+    - Token authentication required for all commands
 """
 
 from __future__ import annotations
 
 import pickle
+import secrets
 import socket
+import struct
 import threading
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from genro_pygui.textual_app import TextualApp
 
+# Frame format: 4-byte length prefix (big-endian)
+FRAME_HEADER_SIZE = 4
+FRAME_HEADER_FORMAT = ">I"  # unsigned int, big-endian
+MAX_MESSAGE_SIZE = 16 * 1024 * 1024  # 16MB max
+
+
+def _send_framed(sock: socket.socket, data: bytes) -> None:
+    """Send data with length prefix."""
+    if len(data) > MAX_MESSAGE_SIZE:
+        raise ValueError(f"Message too large: {len(data)} bytes")
+    header = struct.pack(FRAME_HEADER_FORMAT, len(data))
+    sock.sendall(header + data)
+
+
+def _recv_framed(sock: socket.socket) -> bytes | None:
+    """Receive length-prefixed data."""
+    header = _recv_exact(sock, FRAME_HEADER_SIZE)
+    if header is None:
+        return None
+    length = struct.unpack(FRAME_HEADER_FORMAT, header)[0]
+    if length > MAX_MESSAGE_SIZE:
+        raise ValueError(f"Message too large: {length} bytes")
+    return _recv_exact(sock, length)
+
+
+def _recv_exact(sock: socket.socket, n: int) -> bytes | None:
+    """Receive exactly n bytes."""
+    data = bytearray()
+    while len(data) < n:
+        chunk = sock.recv(n - len(data))
+        if not chunk:
+            return None
+        data.extend(chunk)
+    return bytes(data)
+
 
 class RemoteProxy:
-    """Proxy that sends method calls to remote BagApp."""
+    """Proxy that sends method calls to remote TextualApp."""
 
-    def __init__(self, host: str = "localhost", port: int = 9999) -> None:
+    def __init__(self, host: str = "localhost", port: int = 9999, token: str = "") -> None:
         self._host = host
         self._port = port
+        self._token = token
 
-    def _send(self, cmd: str) -> Any:
+    def _send(self, cmd: tuple) -> Any:
         """Send command and receive result."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self._host, self._port))
-        sock.send(cmd.encode())
-        data = sock.recv(65536)
-        sock.close()
-        if data:
-            return pickle.loads(data)  # noqa: S301
-        return None
+        try:
+            sock.connect((self._host, self._port))
+            # Send auth token + command
+            message = (self._token, cmd)
+            _send_framed(sock, pickle.dumps(message))
+            # Receive response
+            response_data = _recv_framed(sock)
+            if response_data is None:
+                raise ConnectionError("Connection closed by server")
+            status, result = pickle.loads(response_data)  # noqa: S301
+            if status == "error":
+                raise RuntimeError(f"Remote error: {result}")
+            return result
+        finally:
+            sock.close()
 
     @property
     def page(self) -> PageProxy:
@@ -55,40 +108,38 @@ class PageProxy:
         """Forward method calls to remote page."""
 
         def method(*args: Any, **kwargs: Any) -> Any:
-            cmd = f"__call__:{name}:{pickle.dumps((args, kwargs)).hex()}"
-            return self._remote._send(cmd)
+            return self._remote._send(("__call__", name, args, kwargs))
 
         return method
 
     def keys(self) -> list[str]:
         """Get keys from remote Bag."""
-        return self._remote._send("__keys__")
+        return self._remote._send(("__keys__",))
 
     def __getitem__(self, key: str) -> Any:
         """Get item from remote Bag."""
-        cmd = f"__getitem__:{key}"
-        return self._remote._send(cmd)
+        return self._remote._send(("__getitem__", key))
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Set item on remote Bag."""
-        cmd = f"__setitem__:{key}:{pickle.dumps(value).hex()}"
-        self._remote._send(cmd)
+        self._remote._send(("__setitem__", key, value))
 
 
 def connect(
-    name: str | None = None, host: str = "localhost", port: int | None = None
+    name: str | None = None, host: str = "localhost", port: int | None = None, token: str = ""
 ) -> RemoteProxy:
-    """Connect to a remote BagApp by name or port."""
+    """Connect to a remote TextualApp by name or port."""
     if name is not None:
-        from genro_pygui.registry import get_port
+        from genro_pygui.registry import get_app_info
 
-        found_port = get_port(name)
-        if found_port is None:
+        info = get_app_info(name)
+        if info is None:
             raise ValueError(f"App '{name}' not found in registry")
-        port = found_port
+        port = info["port"]
+        token = info.get("token", "")
     elif port is None:
         port = 9999
-    return RemoteProxy(host, port)
+    return RemoteProxy(host, port, token)
 
 
 class RemoteServer:
@@ -99,6 +150,12 @@ class RemoteServer:
         self._port = port
         self._thread: threading.Thread | None = None
         self._running = False
+        self._token = secrets.token_hex(16)
+
+    @property
+    def token(self) -> str:
+        """Authentication token for this server."""
+        return self._token
 
     def start(self) -> None:
         """Start the server in a background thread."""
@@ -115,17 +172,13 @@ class RemoteServer:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind(("localhost", self._port))
-        server.listen(1)
+        server.listen(50)  # Increased backlog
         server.settimeout(1.0)
 
         while self._running:
             try:
                 conn, _ = server.accept()
-                data = conn.recv(65536).decode()
-                if data:
-                    result = self._handle_command(data)
-                    conn.send(pickle.dumps(result))
-                conn.close()
+                self._handle_connection(conn)
             except socket.timeout:
                 continue
             except Exception:
@@ -133,34 +186,59 @@ class RemoteServer:
 
         server.close()
 
-    def _handle_command(self, cmd: str) -> Any:
+    def _handle_connection(self, conn: socket.socket) -> None:
+        """Handle a single connection."""
+        try:
+            data = _recv_framed(conn)
+            if data is None:
+                return
+            token, cmd = pickle.loads(data)  # noqa: S301
+            # Verify token
+            if token != self._token:
+                response = ("error", "Invalid authentication token")
+            else:
+                result = self._handle_command(cmd)
+                response = ("ok", result)
+            _send_framed(conn, pickle.dumps(response))
+        except Exception as e:
+            try:
+                _send_framed(conn, pickle.dumps(("error", str(e))))
+            except Exception:
+                pass
+        finally:
+            conn.close()
+
+    def _handle_command(self, cmd: tuple) -> Any:
         """Handle incoming command."""
-        if cmd == "__keys__":
+        cmd_type = cmd[0]
+
+        if cmd_type == "__keys__":
             return list(self._app.page.keys())
 
-        if cmd.startswith("__getitem__:"):
-            key = cmd.split(":", 1)[1]
+        if cmd_type == "__getitem__":
+            key = cmd[1]
             return self._app.page[key]
 
-        if cmd.startswith("__setitem__:"):
-            _, key, value_hex = cmd.split(":", 2)
-            value = pickle.loads(bytes.fromhex(value_hex))  # noqa: S301
+        if cmd_type == "__setitem__":
+            key, value = cmd[1], cmd[2]
+            return self._safe_call(lambda: setattr_item(self._app.page, key, value))
 
-            def do_set() -> None:
-                self._app.page[key] = value
+        if cmd_type == "__call__":
+            method_name, args, kwargs = cmd[1], cmd[2], cmd[3]
+            return self._safe_call(
+                lambda: getattr(self._app.page, method_name)(*args, **kwargs)
+            )
 
-            self._app._safe_call(do_set)
-            return "ok"
+        raise ValueError(f"Unknown command: {cmd_type}")
 
-        if cmd.startswith("__call__:"):
-            _, method_name, args_hex = cmd.split(":", 2)
-            args, kwargs = pickle.loads(bytes.fromhex(args_hex))  # noqa: S301
+    def _safe_call(self, func: Callable[[], Any]) -> Any:
+        """Execute function in Textual's main thread and return result."""
+        textual_app = self._app._textual_app
+        if textual_app is None:
+            return func()
+        return textual_app.call_from_thread(func)
 
-            def do_call() -> Any:
-                method = getattr(self._app.page, method_name)
-                return method(*args, **kwargs)
 
-            self._app._safe_call(do_call)
-            return "ok"
-
-        return None
+def setattr_item(obj: Any, key: str, value: Any) -> None:
+    """Helper to set item on object (for lambda)."""
+    obj[key] = value

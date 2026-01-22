@@ -21,7 +21,7 @@ class Main(TextualApp):
     }
     """
 
-    def compose(self, root):
+    def main(self, root):
         tabs = root.tabbedcontent(id="main-tabs", initial="overview")
 
         # Tab 1: Overview

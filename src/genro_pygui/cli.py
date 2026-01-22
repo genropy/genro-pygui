@@ -2,11 +2,11 @@
 """CLI for running TextualApp applications.
 
 Usage:
-    textual run examples/basic/hello_world.py
-    textual run examples/basic/hello_world.py -c   # run and connect
-    textual run examples/basic/hello_world.py -r   # run with autoreload
-    textual list
-    textual connect hello_world
+    pygui run examples/basic/hello_world.py
+    pygui run examples/basic/hello_world.py -c   # run and connect
+    pygui run examples/basic/hello_world.py -r   # run with autoreload
+    pygui list
+    pygui connect hello_world
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import time
 
 from genro_pygui.registry import (
     find_free_port,
-    get_port,
+    get_app_info,
     list_apps,
     register_app,
     unregister_app,
@@ -61,9 +61,9 @@ def run_app(file_path: str, connect: bool = False, reload: bool = False) -> None
             env=env,
         )
         # Attendi che l'app si registri
-        for _ in range(10):
+        for _ in range(20):  # Increased retries
             time.sleep(0.2)
-            if get_port(app_name) is not None:
+            if get_app_info(app_name) is not None:
                 break
         connect_repl(app_name)
         return
@@ -81,11 +81,18 @@ def run_app(file_path: str, connect: bool = False, reload: bool = False) -> None
 
     port = find_free_port()
 
-    register_app(app_name, port)
+    # Create app first to get token from remote server
+    app = app_class(remote_port=port)
+
+    # Get token from remote server (created during app init)
+    token = ""
+    if app._remote_server is not None:
+        token = app._remote_server.token
+
+    register_app(app_name, port, token)
     print(f"Starting {app_name} on port {port}")
 
     try:
-        app = app_class(remote_port=port)
         app.run()
     finally:
         unregister_app(app_name)
@@ -97,20 +104,22 @@ def list_running() -> None:
     if not apps:
         print("No apps registered")
         return
-    for app_name, port in apps.items():
+    for app_name, info in apps.items():
+        port = info["port"] if isinstance(info, dict) else info
         print(f"  {app_name}: port {port}")
 
 
 def connect_repl(name: str) -> None:
     """Start a REPL connected to an app."""
-    port = get_port(name)
-    if port is None:
+    info = get_app_info(name)
+    if info is None:
         print(f"App '{name}' not found")
         sys.exit(1)
 
     from genro_pygui.remote import connect
 
-    app = connect(port=port)
+    app = connect(name=name)
+    port = info["port"]
     print(f"Connected to {name} on port {port}")
     print("Use 'app.page.static(\"text\")' to add widgets")
     print("Type 'exit()' to quit")
@@ -122,7 +131,7 @@ def connect_repl(name: str) -> None:
 
 def main() -> None:
     """CLI entry point."""
-    parser = argparse.ArgumentParser(prog="textual", description="TextualApp CLI")
+    parser = argparse.ArgumentParser(prog="pygui", description="TextualApp CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # run command

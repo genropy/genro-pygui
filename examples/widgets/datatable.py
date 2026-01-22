@@ -19,7 +19,7 @@ class Main(TextualApp):
     }
     """
 
-    def compose(self, root):
+    def main(self, root):
         root.static("DataTable Example")
 
         # Create DataTable with columns and rows

@@ -11,7 +11,7 @@ from genro_pygui import TextualApp
 class Main(TextualApp):
     """App with nested containers."""
 
-    def compose(self, root):
+    def main(self, root):
         root.static("Main Title")
 
         box = root.container()

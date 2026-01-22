@@ -20,7 +20,7 @@ class Main(TextualApp):
     .stripe-purple { background: purple; }
     """
 
-    def compose(self, root):
+    def main(self, root):
         tabs = root.tabbedcontent(id="examples")
 
         # Tab 1: Hello World

@@ -15,7 +15,7 @@ from genro_pygui import TextualApp
 class Main(TextualApp):
     """Simple form with input fields."""
 
-    def compose(self, root):
+    def main(self, root):
         root.static("User Registration")
         root.input(placeholder="First Name", id="first_name")
         root.input(placeholder="Last Name", id="last_name")

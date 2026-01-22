@@ -15,7 +15,7 @@ from genro_pygui import TextualApp
 class Main(TextualApp):
     """App with button that adds widgets dynamically."""
 
-    def compose(self, root):
+    def main(self, root):
         root.static("Press the button to add widgets")
         root.static("Press 'q' to quit")
         root.button("Add Static", id="add_btn", variant="primary")

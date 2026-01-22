@@ -17,7 +17,7 @@ from genro_pygui import TextualApp
 class Main(TextualApp):
     """Complex application with tabs, forms, and Exit button."""
 
-    def compose(self, root):
+    def main(self, root):
         root.header(show_clock=True, icon="📦")
 
         tabs = root.tabbedcontent(initial="dashboard")
